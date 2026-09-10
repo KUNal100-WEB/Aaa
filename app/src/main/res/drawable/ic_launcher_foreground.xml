@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Phone body container -->
+    <path
+        android:fillColor="#1E293B"
+        android:strokeColor="#A78BFA"
+        android:strokeWidth="2.5"
+        android:strokeLineJoin="round"
+        android:pathData="M37,25 h34 a6,6 0 0 1 6,6 v46 a6,6 0 0 1 -6,6 h-34 a6,6 0 0 1 -6,-6 v-46 a6,6 0 0 1 6,-6 z" />
+
+    <!-- Phone top speaker bar -->
+    <path
+        android:pathData="M49,29 h10"
+        android:strokeColor="#94A3B8"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round" />
+
+    <!-- Code brackets '<' and '>' inside phone screen -->
+    <!-- Left bracket < -->
+    <path
+        android:pathData="M47,46 L41,52 L47,58"
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- Right bracket > -->
+    <path
+        android:pathData="M61,46 L67,52 L61,58"
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- Code slash / -->
+    <path
+        android:pathData="M56,44 L52,60"
+        android:strokeColor="#818CF8"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round" />
+
+    <!-- AI sparkle ✦ at top-right of phone -->
+    <path
+        android:fillColor="#FCD34D"
+        android:pathData="M76,30 Q76,35 81,35 Q76,35 76,40 Q76,35 71,35 Q76,35 76,30 Z" />
+
+    <!-- AI mini sparkle at bottom-left -->
+    <path
+        android:fillColor="#C084FC"
+        android:pathData="M31,64 Q31,67 34,67 Q31,67 31,70 Q31,67 28,67 Q31,67 31,64 Z" />
+</vector>

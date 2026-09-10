@@ -1,0 +1,6 @@
+{
+  "name": "Phone AI Android IDE",
+  "description": "Mobile-first AI Android IDE to generate, inspect, edit, build, and export Android apps.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

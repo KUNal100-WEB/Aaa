@@ -1,0 +1,2068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Phone AI Android IDE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <style>
+    :root {
+      --bg-dark: #0f1115;
+      --surface: #181b22;
+      --surface-variant: #222733;
+      --surface-card: #1d212b;
+      --border: #2d3343;
+      --primary: #8b5cf6;
+      --primary-hover: #9f75ff;
+      --primary-container: #3c2a68;
+      --on-primary: #ffffff;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent-green: #10b981;
+      --accent-blue: #38bdf8;
+      --accent-yellow: #f59e0b;
+      --accent-red: #ef4444;
+      --code-bg: #11141c;
+      --font-ui: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      overflow-x: hidden;
+    }
+
+    /* Top Global Header */
+    .top-system-header {
+      width: 100%;
+      background: rgba(24, 27, 34, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 20px;
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+    }
+
+    .brand-badge {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent-green);
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .view-toggle-btn {
+      background: var(--surface-variant);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .view-toggle-btn.active, .view-toggle-btn:hover {
+      background: var(--primary-container);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    /* Container Modes */
+    .app-viewport {
+      width: 100%;
+      max-width: 480px; /* Default mobile phone size */
+      min-height: calc(100vh - 54px);
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+      transition: max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .app-viewport.expanded {
+      max-width: 1200px;
+    }
+
+    /* Status Bar Emulation (Mobile View) */
+    .phone-status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 16px 4px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--surface);
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+
+    /* Screen Content Viewport */
+    .main-screen-container {
+      flex: 1;
+      overflow-y: auto;
+      padding-bottom: 74px; /* space for bottom nav */
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Screen Sections */
+    .screen-view {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      padding: 16px;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .screen-view.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Common Card Styles */
+    .m3-card {
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 12px;
+      position: relative;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+
+    .m3-card:hover {
+      border-color: rgba(139, 92, 246, 0.4);
+    }
+
+    /* Bottom Navigation Bar */
+    .bottom-nav {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 68px;
+      background: rgba(24, 27, 34, 0.96);
+      backdrop-filter: blur(16px);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 20px;
+      transition: all 0.2s;
+      min-width: 64px;
+      min-height: 48px;
+    }
+
+    .nav-item .icon-wrapper {
+      width: 44px;
+      height: 28px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .nav-item.active {
+      color: #fff;
+    }
+
+    .nav-item.active .icon-wrapper {
+      background: var(--primary-container);
+      color: #c4b5fd;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: var(--font-ui);
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 18px;
+      border-radius: 12px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+      min-height: 44px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(139, 92, 246, 0.35);
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background: var(--surface-variant);
+      color: var(--text-main);
+      border-color: var(--border);
+    }
+    .btn-secondary:hover {
+      border-color: var(--text-muted);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text-main);
+      border-color: var(--border);
+    }
+
+    .btn-success {
+      background: var(--accent-green);
+      color: #fff;
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--accent-red);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+      min-height: 36px;
+      border-radius: 8px;
+    }
+
+    /* Floating Action Button */
+    .fab {
+      position: absolute;
+      bottom: 84px;
+      right: 20px;
+      width: 56px;
+      height: 56px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #8b5cf6, #6366f1);
+      color: #fff;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+      cursor: pointer;
+      z-index: 90;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .fab:hover {
+      transform: scale(1.05);
+      box-shadow: 0 10px 28px rgba(99, 102, 241, 0.55);
+    }
+
+    /* Search & Inputs */
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface-variant);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 14px;
+      margin-bottom: 16px;
+    }
+
+    .search-box input {
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-size: 14px;
+      width: 100%;
+      outline: none;
+      font-family: var(--font-ui);
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .form-control {
+      width: 100%;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #fff;
+      font-size: 14px;
+      font-family: var(--font-ui);
+      outline: none;
+    }
+
+    .form-control:focus {
+      border-color: var(--primary);
+    }
+
+    /* Subtabs inside IDE screen */
+    .ide-tabs {
+      display: flex;
+      background: var(--surface-variant);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 12px;
+      gap: 4px;
+    }
+
+    .ide-tab-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 4px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .ide-tab-btn.active {
+      background: var(--surface-card);
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    /* File Tree */
+    .file-tree-container {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      flex: 1;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      cursor: pointer;
+      font-size: 13px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .file-item:hover, .file-item.selected {
+      background: rgba(139, 92, 246, 0.15);
+      color: #fff;
+    }
+
+    .file-icon {
+      font-size: 18px;
+      color: #38bdf8;
+    }
+
+    .file-icon.kt { color: #f59e0b; }
+    .file-icon.xml { color: #ec4899; }
+    .file-icon.gradle { color: #10b981; }
+
+    /* Code Editor */
+    .editor-container {
+      display: flex;
+      flex-direction: column;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      min-height: 420px;
+      flex: 1;
+    }
+
+    .editor-header {
+      background: var(--surface-variant);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .editor-file-title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .editor-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .line-numbers {
+      background: rgba(0,0,0,0.25);
+      padding: 12px 8px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #475569;
+      text-align: right;
+      user-select: none;
+      line-height: 20px;
+      border-right: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .code-textarea {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #e2e8f0;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 20px;
+      padding: 12px;
+      outline: none;
+      resize: none;
+      white-space: pre;
+      overflow-x: auto;
+      tab-size: 4;
+    }
+
+    /* AI Chat Interface */
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      gap: 12px;
+    }
+
+    .quick-actions-scroll {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      scrollbar-width: none;
+    }
+
+    .quick-chip {
+      background: var(--surface-variant);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .quick-chip:hover {
+      background: var(--primary-container);
+      border-color: var(--primary);
+    }
+
+    .chat-history {
+      flex: 1;
+      min-height: 280px;
+      max-height: 440px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-right: 4px;
+    }
+
+    .chat-msg {
+      max-width: 92%;
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .chat-msg.user {
+      align-self: flex-end;
+      background: var(--primary);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .chat-msg.ai {
+      align-self: flex-start;
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      border-bottom-left-radius: 4px;
+    }
+
+    .action-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(139, 92, 246, 0.2);
+      border: 1px solid rgba(139, 92, 246, 0.4);
+      color: #c4b5fd;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      margin-top: 6px;
+    }
+
+    .chat-input-bar {
+      display: flex;
+      gap: 8px;
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 6px 8px;
+    }
+
+    .chat-input-bar input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #fff;
+      outline: none;
+      font-size: 14px;
+      padding-left: 8px;
+      font-family: var(--font-ui);
+    }
+
+    /* Build Console */
+    .build-console {
+      background: #090a0f;
+      border: 1px solid #1e2230;
+      border-radius: 12px;
+      padding: 14px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1.6;
+      color: #94a3b8;
+      min-height: 260px;
+      max-height: 380px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .log-success { color: #34d399; font-weight: 600; }
+    .log-err { color: #f87171; font-weight: 600; }
+    .log-task { color: #60a5fa; }
+    .log-warn { color: #fbbf24; }
+
+    /* Modal / Dialog */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      width: 100%;
+      max-width: 440px;
+      padding: 24px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+      animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    /* Progress Steps */
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      font-size: 13px;
+    }
+
+    .step-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .step-pending { background: var(--surface-variant); color: var(--text-muted); }
+    .step-active { background: var(--primary); color: #fff; animation: pulse 1.2s infinite; }
+    .step-done { background: var(--accent-green); color: #fff; }
+
+    @keyframes pulse {
+      0% { opacity: 0.6; }
+      50% { opacity: 1; }
+      100% { opacity: 0.6; }
+    }
+
+    /* Utility */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-kotlin {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fbbf24;
+    }
+
+    .badge-status {
+      background: rgba(148, 163, 184, 0.15);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      color: #94a3b8;
+    }
+    .badge-status.succeeded { background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.4); color: #34d399; }
+    .badge-status.failed { background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.4); color: #f87171; }
+    .badge-status.running { background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.4); color: #60a5fa; }
+
+    .material-symbols-outlined {
+      font-size: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top System Header -->
+  <header class="top-system-header">
+    <div class="brand-group">
+      <div class="brand-icon">
+        <span class="material-symbols-outlined">terminal</span>
+      </div>
+      <div>
+        <div class="brand-title">Phone AI Android IDE</div>
+        <div style="font-size: 11px; color: var(--text-muted);">Android Studio + Agent MVP</div>
+      </div>
+    </div>
+    <div class="header-controls">
+      <span class="brand-badge" id="cloudWorkerBadge">Isolated Cloud Worker Ready</span>
+      <button class="view-toggle-btn" id="toggleViewportBtn" title="Toggle between Phone frame and Expanded layout">
+        <span class="material-symbols-outlined" id="viewportIcon">devices</span>
+        <span id="viewportLabel">Expanded</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Phone Viewport Container -->
+  <main class="app-viewport" id="mainViewport">
+    
+    <!-- Phone Status Bar Mock -->
+    <div class="phone-status-bar">
+      <span>09:41</span>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <span class="material-symbols-outlined" style="font-size: 14px;">wifi</span>
+        <span class="material-symbols-outlined" style="font-size: 14px;">signal_cellular_4_bar</span>
+        <span class="material-symbols-outlined" style="font-size: 14px;">battery_full</span>
+      </div>
+    </div>
+
+    <!-- Main Screens Container -->
+    <div class="main-screen-container">
+
+      <!-- ================= 1. PROJECTS SCREEN ================= -->
+      <section class="screen-view active" id="screenProjects">
+        <div style="margin-bottom: 16px;">
+          <h1 style="font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">Phone AI Android IDE</h1>
+          <p style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">Build Android apps with AI.</p>
+        </div>
+
+        <!-- Search Box -->
+        <div class="search-box">
+          <span class="material-symbols-outlined" style="color: var(--text-muted);">search</span>
+          <input type="text" id="projectSearchInput" placeholder="Search projects...">
+        </div>
+
+        <!-- Project Cards List -->
+        <div id="projectsListContainer">
+          <!-- Populated by JavaScript -->
+        </div>
+
+        <!-- FAB for New Project -->
+        <button class="fab" id="btnOpenNewProjectModal" title="New Project">
+          <span class="material-symbols-outlined" style="font-size: 28px;">add</span>
+        </button>
+      </section>
+
+      <!-- ================= 2. AI BUILDER SCREEN ================= -->
+      <section class="screen-view" id="screenAIBuilder">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div>
+            <h2 style="font-size: 18px; font-weight: 700;">AI Coding Agent</h2>
+            <div style="font-size: 12px; color: var(--text-muted);" id="aiActiveProjectLabel">Project: Notes App</div>
+          </div>
+          <span class="badge" style="background: rgba(139, 92, 246, 0.2); color: #c4b5fd;">
+            <span class="material-symbols-outlined" style="font-size: 14px;">auto_awesome</span> Gemini 2.5
+          </span>
+        </div>
+
+        <!-- Quick Action Chips -->
+        <div class="quick-actions-scroll">
+          <button class="quick-chip" onclick="triggerQuickAction('Explain project architecture')">💡 Explain project</button>
+          <button class="quick-chip" onclick="triggerQuickAction('Add Firebase authentication and sign-in')">🔐 Add auth</button>
+          <button class="quick-chip" onclick="triggerQuickAction('Create a dark mode settings screen')">⚙️ Add settings</button>
+          <button class="quick-chip" onclick="triggerQuickAction('Fix compiler build error')">🛠️ Fix error</button>
+          <button class="quick-chip" onclick="triggerQuickAction('Refactor and clean Compose code')">🧹 Refactor</button>
+        </div>
+
+        <!-- Chat History -->
+        <div class="chat-container" style="margin-top: 10px;">
+          <div class="chat-history" id="chatHistoryList">
+            <div class="chat-msg ai">
+              👋 <strong>Welcome to Phone AI Android IDE Agent!</strong><br>
+              I can generate full Jetpack Compose components, inspect your Kotlin files, apply structured changes safely, and fix build errors automatically.
+            </div>
+          </div>
+
+          <!-- Chat Input -->
+          <div class="chat-input-bar">
+            <input type="text" id="aiPromptInput" placeholder="Describe a feature or fix...">
+            <button class="btn btn-primary btn-sm" id="btnSendAiPrompt">
+              <span class="material-symbols-outlined" style="font-size: 18px;">send</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 3. PROJECT IDE SCREEN ================= -->
+      <section class="screen-view" id="screenIDE">
+        <!-- Project Context Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div style="overflow: hidden;">
+            <div style="font-size: 15px; font-weight: 700; white-space: nowrap; text-overflow: ellipsis;" id="ideProjectTitle">Modern Notes App</div>
+            <div style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);" id="idePackageName">com.example.notesapp</div>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-outline btn-sm" id="btnExportZip" title="Export Project as ZIP">
+              <span class="material-symbols-outlined" style="font-size: 16px;">archive</span> ZIP
+            </button>
+            <button class="btn btn-primary btn-sm" id="btnIdeQuickBuild">
+              <span class="material-symbols-outlined" style="font-size: 16px;">play_arrow</span> Build
+            </button>
+          </div>
+        </div>
+
+        <!-- Subtabs: Files, Code, AI, Build -->
+        <div class="ide-tabs">
+          <button class="ide-tab-btn active" data-idetab="tabFiles">
+            <span class="material-symbols-outlined">folder</span> Files
+          </button>
+          <button class="ide-tab-btn" data-idetab="tabCode">
+            <span class="material-symbols-outlined">code</span> Code
+          </button>
+          <button class="ide-tab-btn" data-idetab="tabAIAssist">
+            <span class="material-symbols-outlined">auto_awesome</span> AI
+          </button>
+          <button class="ide-tab-btn" data-idetab="tabBuild">
+            <span class="material-symbols-outlined">build</span> Build
+          </button>
+        </div>
+
+        <!-- IDE Subtab: Files -->
+        <div class="ide-tab-content" id="tabFiles">
+          <div class="file-tree-container" id="fileTreeContainer">
+            <!-- Files loaded via JS -->
+          </div>
+        </div>
+
+        <!-- IDE Subtab: Code Editor -->
+        <div class="ide-tab-content" id="tabCode" style="display: none;">
+          <div class="editor-container">
+            <div class="editor-header">
+              <div class="editor-file-title">
+                <span class="material-symbols-outlined" style="font-size: 16px; color: #fbbf24;">description</span>
+                <span id="editorCurrentFilePath">app/src/main/java/...</span>
+                <span id="unsavedIndicator" style="display: none; color: #fbbf24;">*</span>
+              </div>
+              <div style="display: flex; gap: 6px;">
+                <button class="btn btn-secondary btn-sm" id="btnInjectError" title="Simulate a compilation error to test AI repair">
+                  <span class="material-symbols-outlined" style="font-size: 15px; color: #ef4444;">bug_report</span> Test Error
+                </button>
+                <button class="btn btn-primary btn-sm" id="btnSaveEditor">
+                  <span class="material-symbols-outlined" style="font-size: 15px;">save</span> Save
+                </button>
+              </div>
+            </div>
+            <div class="editor-body">
+              <div class="line-numbers" id="editorLineNumbers">1<br>2<br>3<br>4</div>
+              <textarea class="code-textarea" id="editorTextArea" spellcheck="false"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- IDE Subtab: AI Assistant in IDE -->
+        <div class="ide-tab-content" id="tabAIAssist" style="display: none;">
+          <div class="m3-card" style="margin-bottom: 8px;">
+            <div style="font-size: 13px; font-weight: 600;">Active Context: <span id="aiIdeCurrentFileLabel" style="color: #60a5fa; font-family: var(--font-mono);">MainActivity.kt</span></div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Changes are validated to prevent path traversal and maintain project integrity.</div>
+          </div>
+          <div class="chat-input-bar" style="margin-bottom: 12px;">
+            <input type="text" id="aiIdeInput" placeholder="Ask AI to modify this file or project...">
+            <button class="btn btn-primary btn-sm" id="btnSendAiIde">
+              <span class="material-symbols-outlined" style="font-size: 18px;">send</span>
+            </button>
+          </div>
+          <div id="aiIdeActionLog" style="display: flex; flex-direction: column; gap: 8px;">
+            <!-- Actions logged here -->
+          </div>
+        </div>
+
+        <!-- IDE Subtab: Build Console -->
+        <div class="ide-tab-content" id="tabBuild" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div>
+              <div style="font-size: 14px; font-weight: 700;">Remote Build Console</div>
+              <div style="font-size: 11px; color: var(--text-muted);">Worker: Mock Isolated Cloud Builder</div>
+            </div>
+            <span class="badge badge-status" id="buildStatusBadge">IDLE</span>
+          </div>
+
+          <!-- Build Metrics Card -->
+          <div class="m3-card" style="padding: 12px; display: flex; justify-content: space-around; text-align: center;">
+            <div>
+              <div style="font-size: 11px; color: var(--text-muted);">Status</div>
+              <div style="font-size: 13px; font-weight: 700;" id="metricBuildStatus">Not run</div>
+            </div>
+            <div style="border-left: 1px solid var(--border);"></div>
+            <div>
+              <div style="font-size: 11px; color: var(--text-muted);">Duration</div>
+              <div style="font-size: 13px; font-weight: 700;" id="metricBuildDuration">0.0s</div>
+            </div>
+            <div style="border-left: 1px solid var(--border);"></div>
+            <div>
+              <div style="font-size: 11px; color: var(--text-muted);">Progress</div>
+              <div style="font-size: 13px; font-weight: 700;" id="metricBuildProgress">0%</div>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div style="width: 100%; height: 6px; background: var(--surface-variant); border-radius: 3px; overflow: hidden; margin-bottom: 12px;">
+            <div id="buildProgressBar" style="width: 0%; height: 100%; background: var(--primary); transition: width 0.3s;"></div>
+          </div>
+
+          <!-- Error Alert (Shown when build fails) -->
+          <div class="m3-card" id="buildErrorCard" style="display: none; border-color: rgba(239,68,68,0.5); background: rgba(239,68,68,0.08);">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="material-symbols-outlined" style="color: var(--accent-red);">error</span>
+                <span style="font-size: 13px; font-weight: 700; color: var(--accent-red);">Compilation Error</span>
+              </div>
+              <button class="btn btn-primary btn-sm" id="btnFixErrorWithAi">
+                <span class="material-symbols-outlined" style="font-size: 15px;">auto_fix_high</span> Fix with AI
+              </button>
+            </div>
+            <div style="font-size: 12px; color: #fca5a5; font-family: var(--font-mono); margin-top: 8px;" id="buildErrorSummaryText">
+              e: app/src/main/java/...
+            </div>
+          </div>
+
+          <!-- Artifact Ready Card (Shown on build success) -->
+          <div class="m3-card" id="buildArtifactCard" style="display: none; border-color: rgba(16,185,129,0.5); background: rgba(16,185,129,0.08);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="material-symbols-outlined" style="color: var(--accent-green);">check_circle</span>
+                <span style="font-size: 14px; font-weight: 700; color: var(--accent-green);">APK Ready</span>
+              </div>
+              <span class="badge" style="background: rgba(16,185,129,0.2); color: #34d399;" id="artifactSizeBadge">14.1 MB</span>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <a class="btn btn-success btn-sm" id="btnDownloadApk" href="#" download>
+                <span class="material-symbols-outlined" style="font-size: 16px;">download</span> Download APK
+              </a>
+              <button class="btn btn-secondary btn-sm" id="btnHandoffInstall">
+                <span class="material-symbols-outlined" style="font-size: 16px;">install_mobile</span> Install
+              </button>
+            </div>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 8px;">
+              * Note: In mock/simulation mode, this demonstrates the artifact pipeline handoff. Real cloud builds hook into standard APK outputs.
+            </div>
+          </div>
+
+          <!-- Compiler Output Logs Terminal -->
+          <div class="build-console" id="buildLogsConsole">> Ready to build. Tap [Build Again] to start remote compilation.</div>
+
+          <!-- Action Buttons -->
+          <div style="display: flex; gap: 8px; margin-top: 12px;">
+            <button class="btn btn-primary" style="flex: 1;" id="btnTriggerBuildAgain">
+              <span class="material-symbols-outlined">refresh</span> Build Again
+            </button>
+            <button class="btn btn-secondary" id="btnCancelBuild" style="display: none;">
+              <span class="material-symbols-outlined">cancel</span> Cancel
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 4. SETTINGS SCREEN ================= -->
+      <section class="screen-view" id="screenSettings">
+        <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 16px;">IDE Settings</h2>
+
+        <div class="m3-card">
+          <div style="font-size: 14px; font-weight: 700; margin-bottom: 4px;">Developer Account</div>
+          <div style="font-size: 12px; color: var(--text-muted);" id="settingsUserEmail">developer@phone-ai-ide.internal</div>
+          <div style="margin-top: 10px; display: flex; gap: 8px;">
+            <button class="btn btn-secondary btn-sm" id="btnAuthManage">Manage Session</button>
+          </div>
+        </div>
+
+        <div class="m3-card">
+          <div style="font-size: 14px; font-weight: 700; margin-bottom: 8px;">AI Model Selection</div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <select class="form-control" id="settingsAiModelSelect">
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recommended)</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro (Deep Code Reasoning)</option>
+              <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+            </select>
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+            Keys managed server-side. Never exposed to mobile client.
+          </div>
+        </div>
+
+        <div class="m3-card">
+          <div style="font-size: 14px; font-weight: 700; margin-bottom: 8px;">Cloud Build Settings</div>
+          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
+            Worker Mode: <span style="color: #60a5fa;">Isolated Build Worker (Mock Simulation)</span>
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted); line-height: 1.5;">
+            The mobile client delegates compilation to isolated backend workers equipped with JDK 17, Android SDK 35, and Gradle 8.9.
+          </div>
+        </div>
+
+        <div class="m3-card">
+          <div style="font-size: 14px; font-weight: 700; margin-bottom: 4px;">About Phone AI Android IDE</div>
+          <div style="font-size: 12px; color: var(--text-muted);">Version 1.0.0-MVP</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+            Designed for building native Android Kotlin & Jetpack Compose apps directly from a smartphone.
+          </div>
+        </div>
+      </section>
+
+      <!-- SCREEN 5: BUILT APPS -->
+      <section class="screen-view" id="screenBuiltApps">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+          <div>
+            <h2 style="font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 8px; margin: 0;">
+              <span>Built Apps & APKs</span>
+              <span class="badge badge-primary" id="builtAppsCountBadge" style="font-size: 11px;">1</span>
+            </h2>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+              Compiled APK packages ready for installation, direct running, or distribution.
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btnBuildFromBuiltApps" onclick="triggerBuildFromBuiltSection()">
+            <span class="material-symbols-outlined" style="font-size: 16px;">play_arrow</span>
+            <span>Build Active</span>
+          </button>
+        </div>
+
+        <!-- Metric Cards -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0;">
+          <div class="m3-card" style="margin-bottom: 0; padding: 10px;">
+            <div style="font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;">
+              Ready APKs <span class="material-symbols-outlined" style="font-size: 15px; color: #10b981;">android</span>
+            </div>
+            <div style="font-size: 18px; font-weight: 800; margin-top: 4px;" id="metricBuiltCount">1</div>
+          </div>
+          <div class="m3-card" style="margin-bottom: 0; padding: 10px;">
+            <div style="font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;">
+              Storage <span class="material-symbols-outlined" style="font-size: 15px; color: #6366f1;">inventory_2</span>
+            </div>
+            <div style="font-size: 18px; font-weight: 800; margin-top: 4px;" id="metricBuiltStorage">14.1 MB</div>
+          </div>
+          <div class="m3-card" style="margin-bottom: 0; padding: 10px;">
+            <div style="font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;">
+              Signing <span class="material-symbols-outlined" style="font-size: 15px; color: #f59e0b;">verified</span>
+            </div>
+            <div style="font-size: 16px; font-weight: 700; margin-top: 4px;">Debug Key</div>
+          </div>
+        </div>
+
+        <!-- Search & Filter -->
+        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+          <input type="text" class="form-control" id="builtAppsSearchInput" placeholder="Search built APKs..." oninput="filterBuiltApps()" style="flex: 1; font-size: 13px;">
+          <select class="form-control" id="builtAppsFilterSelect" onchange="filterBuiltApps()" style="width: 115px; font-size: 12px;">
+            <option value="ALL">All Builds</option>
+            <option value="DEBUG">Debug APK</option>
+            <option value="RELEASE">Release</option>
+          </select>
+        </div>
+
+        <!-- List container -->
+        <div id="builtAppsListContainer">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-screen="screenProjects">
+        <div class="icon-wrapper">
+          <span class="material-symbols-outlined">grid_view</span>
+        </div>
+        <span>Projects</span>
+      </button>
+
+      <button class="nav-item" data-screen="screenAIBuilder">
+        <div class="icon-wrapper">
+          <span class="material-symbols-outlined">auto_awesome</span>
+        </div>
+        <span>AI Builder</span>
+      </button>
+
+      <button class="nav-item" data-screen="screenIDE">
+        <div class="icon-wrapper">
+          <span class="material-symbols-outlined">terminal</span>
+        </div>
+        <span>Current IDE</span>
+      </button>
+
+      <button class="nav-item" data-screen="screenBuiltApps">
+        <div class="icon-wrapper">
+          <span class="material-symbols-outlined">android</span>
+        </div>
+        <span>Built Apps</span>
+      </button>
+
+      <button class="nav-item" data-screen="screenSettings">
+        <div class="icon-wrapper">
+          <span class="material-symbols-outlined">settings</span>
+        </div>
+        <span>Settings</span>
+      </button>
+    </nav>
+  </main>
+
+  <!-- ================= MODAL: CREATE PROJECT ================= -->
+  <div class="modal-overlay" id="modalNewProject">
+    <div class="modal-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="font-size: 18px; font-weight: 700;">New Android Project</h3>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('modalNewProject')">✕</button>
+      </div>
+
+      <div class="form-group">
+        <label>Project Name</label>
+        <input type="text" class="form-control" id="newProjName" placeholder="e.g. Fitness Tracker">
+      </div>
+
+      <div class="form-group">
+        <label>Package Name</label>
+        <input type="text" class="form-control" id="newProjPackage" placeholder="com.example.fitnesstracker">
+      </div>
+
+      <div class="form-group">
+        <label>App Description (Natural Language Prompt)</label>
+        <textarea class="form-control" id="newProjDesc" rows="3" placeholder="Describe the screens, features, data models, or APIs you want..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Theme & Template</label>
+        <select class="form-control" id="newProjTheme">
+          <option value="Material 3 Dark">Material 3 Dark (Recommended)</option>
+          <option value="Material 3 Dynamic">Material 3 Dynamic System</option>
+          <option value="High Contrast Developer">High Contrast Developer</option>
+        </select>
+      </div>
+
+      <div style="display: flex; gap: 16px; margin: 14px 0;">
+        <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;">
+          <input type="checkbox" id="newProjFirebase"> Firebase Ready
+        </label>
+        <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;">
+          <input type="checkbox" id="newProjAuth"> Auth Scaffold
+        </label>
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-top: 20px;">
+        <button class="btn btn-secondary" style="flex: 1;" onclick="closeModal('modalNewProject')">Cancel</button>
+        <button class="btn btn-primary" style="flex: 1.5;" id="btnCreateWithAi">
+          <span class="material-symbols-outlined">auto_awesome</span> Create with AI
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: GENERATION PROGRESS ================= -->
+  <div class="modal-overlay" id="modalGenerationProgress">
+    <div class="modal-card" style="text-align: left;">
+      <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">Generating Project</h3>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">AI Agent is scaffolding Kotlin & Jetpack Compose project...</p>
+
+      <div id="generationStepsList">
+        <div class="step-item" id="genStep1">
+          <div class="step-icon step-active"><span class="material-symbols-outlined" style="font-size: 14px;">sync</span></div>
+          <span>Analyzing requirements</span>
+        </div>
+        <div class="step-item" id="genStep2">
+          <div class="step-icon step-pending"><span class="material-symbols-outlined" style="font-size: 14px;">folder</span></div>
+          <span>Creating project structure</span>
+        </div>
+        <div class="step-item" id="genStep3">
+          <div class="step-icon step-pending"><span class="material-symbols-outlined" style="font-size: 14px;">code</span></div>
+          <span>Generating UI (Compose)</span>
+        </div>
+        <div class="step-item" id="genStep4">
+          <div class="step-icon step-pending"><span class="material-symbols-outlined" style="font-size: 14px;">database</span></div>
+          <span>Generating data layer</span>
+        </div>
+        <div class="step-item" id="genStep5">
+          <div class="step-icon step-pending"><span class="material-symbols-outlined" style="font-size: 14px;">verified</span></div>
+          <span>Checking dependencies</span>
+        </div>
+        <div class="step-item" id="genStep6">
+          <div class="step-icon step-pending"><span class="material-symbols-outlined" style="font-size: 14px;">check</span></div>
+          <span>Preparing project</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: RUN BUILT APP (SIMULATOR) ================= -->
+  <div class="modal-overlay" id="modalRunBuiltApp">
+    <div class="modal-card" style="max-width: 380px; padding: 0; overflow: hidden; border-radius: 28px; border: 2px solid #334155; background: #0f172a;">
+      <!-- Simulated Phone Header -->
+      <div style="background: #1e293b; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="material-symbols-outlined" style="color: #10b981; font-size: 20px;">android</span>
+          <span style="font-weight: 700; font-size: 14px; color: #fff;" id="simulatedAppHeaderTitle">Notes App</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="badge" style="background: rgba(16,185,129,0.2); color: #10b981; font-size: 10px; font-weight: 700;">LIVE SIMULATION</span>
+          <button class="btn btn-outline btn-sm" onclick="closeModal('modalRunBuiltApp')" style="padding: 2px 6px;">✕</button>
+        </div>
+      </div>
+
+      <!-- Simulated App Body -->
+      <div style="padding: 16px; background: #090d16; min-height: 380px; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div>
+            <div style="font-size: 16px; font-weight: 800; color: #fff;" id="simulatedAppTitle">Modern Notes App</div>
+            <div style="font-size: 11px; color: var(--text-muted);" id="simulatedAppPkg">com.example.notesapp</div>
+          </div>
+          <span class="badge badge-kotlin">Jetpack Compose</span>
+        </div>
+
+        <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+          <input type="text" class="form-control" id="simNewNoteInput" placeholder="Add a new item..." style="font-size: 12px; background: #1e293b; color: #fff;">
+          <button class="btn btn-primary btn-sm" onclick="addSimulatedNote()">
+            <span class="material-symbols-outlined" style="font-size: 16px;">add</span>
+          </button>
+        </div>
+
+        <div id="simulatedNotesList" style="display: flex; flex-direction: column; gap: 8px; flex: 1; overflow-y: auto; max-height: 240px;">
+          <div style="background: #1e293b; padding: 10px 12px; border-radius: 8px; border: 1px solid #334155;">
+            <div style="font-size: 13px; font-weight: 600; color: #fff;">Welcome to your built Android app!</div>
+            <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Category: Onboarding</div>
+          </div>
+          <div style="background: #1e293b; padding: 10px 12px; border-radius: 8px; border: 1px solid #334155;">
+            <div style="font-size: 13px; font-weight: 600; color: #fff;">APK compiled and validated successfully</div>
+            <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Category: Build & Deploy</div>
+          </div>
+        </div>
+
+        <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center;">
+          <div style="font-size: 10px; color: var(--text-muted);">Simulated on Android SDK 35 (x86_64)</div>
+          <button class="btn btn-secondary btn-sm" onclick="closeModal('modalRunBuiltApp')">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Application Logic -->
+  <script>
+    // State
+    let currentProject = null;
+    let projectList = [];
+    let currentFiles = [];
+    let selectedFile = null;
+    let activeBuildId = null;
+    let buildPollInterval = null;
+
+    // Viewport Toggle
+    const mainViewport = document.getElementById('mainViewport');
+    const toggleViewportBtn = document.getElementById('toggleViewportBtn');
+    const viewportIcon = document.getElementById('viewportIcon');
+    const viewportLabel = document.getElementById('viewportLabel');
+
+    toggleViewportBtn.addEventListener('click', () => {
+      mainViewport.classList.toggle('expanded');
+      const isExpanded = mainViewport.classList.contains('expanded');
+      viewportIcon.textContent = isExpanded ? 'phone_iphone' : 'devices';
+      viewportLabel.textContent = isExpanded ? 'Phone' : 'Expanded';
+    });
+
+    // Navigation
+    const navItems = document.querySelectorAll('.nav-item');
+    const screenViews = document.querySelectorAll('.screen-view');
+
+    navItems.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetScreen = btn.getAttribute('data-screen');
+        switchScreen(targetScreen);
+      });
+    });
+
+    function switchScreen(screenId) {
+      navItems.forEach(n => {
+        n.classList.toggle('active', n.getAttribute('data-screen') === screenId);
+      });
+      screenViews.forEach(s => {
+        s.classList.toggle('active', s.id === screenId);
+      });
+    }
+
+    // IDE Subtabs
+    const ideTabBtns = document.querySelectorAll('.ide-tab-btn');
+    const ideTabContents = document.querySelectorAll('.ide-tab-content');
+
+    ideTabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        ideTabBtns.forEach(b => b.classList.remove('active'));
+        ideTabContents.forEach(c => c.style.display = 'none');
+        btn.classList.add('active');
+        const tabTarget = btn.getAttribute('data-idetab');
+        const targetElem = document.getElementById(tabTarget);
+        if (targetElem) targetElem.style.display = 'block';
+      });
+    });
+
+    // Modal Helpers
+    function openModal(id) {
+      document.getElementById(id).classList.add('active');
+    }
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+    }
+
+    // Load Projects
+    async function loadProjects() {
+      try {
+        const res = await fetch('/api/projects');
+        const data = await res.json();
+        projectList = data.projects || [];
+        renderProjectsList();
+
+        if (!currentProject && projectList.length > 0) {
+          selectProject(projectList[0].id);
+        }
+      } catch (err) {
+        console.error('Failed to load projects:', err);
+      }
+    }
+
+    function renderProjectsList(filter = '') {
+      const container = document.getElementById('projectsListContainer');
+      const filtered = projectList.filter(p => 
+        p.name.toLowerCase().includes(filter.toLowerCase()) || 
+        p.packageName.toLowerCase().includes(filter.toLowerCase())
+      );
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="m3-card" style="text-align: center; padding: 32px 16px;">
+            <span class="material-symbols-outlined" style="font-size: 40px; color: var(--text-muted);">folder_off</span>
+            <div style="font-size: 15px; font-weight: 700; margin-top: 8px;">No projects found</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Tap "+ New Project" to create one with AI.</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(p => `
+        <div class="m3-card" onclick="selectProject('${p.id}', true)">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <div style="font-size: 16px; font-weight: 700; color: #fff;">${p.name}</div>
+              <div style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px;">${p.packageName}</div>
+            </div>
+            <span class="badge badge-kotlin">Kotlin / Compose</span>
+          </div>
+
+          <div style="font-size: 12px; color: #cbd5e1; margin: 10px 0; line-height: 1.4;">
+            ${p.description || 'Modern Android application'}
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px;">
+            <div style="font-size: 11px; color: var(--text-muted);">
+              Modified ${formatTime(p.updatedAt)}
+            </div>
+            <div style="display: flex; gap: 4px;" onclick="event.stopPropagation();">
+              <button class="btn btn-outline btn-sm" onclick="renameProjectPrompt('${p.id}', '${p.name}')" title="Rename">
+                <span class="material-symbols-outlined" style="font-size: 14px;">edit</span>
+              </button>
+              <button class="btn btn-outline btn-sm" onclick="duplicateProjectAction('${p.id}')" title="Duplicate">
+                <span class="material-symbols-outlined" style="font-size: 14px;">content_copy</span>
+              </button>
+              <button class="btn btn-danger btn-sm" onclick="deleteProjectAction('${p.id}')" title="Delete">
+                <span class="material-symbols-outlined" style="font-size: 14px;">delete</span>
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="selectProject('${p.id}', true)">
+                Open <span class="material-symbols-outlined" style="font-size: 14px;">arrow_forward</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function formatTime(ts) {
+      if (!ts) return 'recently';
+      const sec = Math.floor((Date.now() - ts) / 1000);
+      if (sec < 60) return 'just now';
+      if (sec < 3600) return `${Math.floor(sec/60)}m ago`;
+      if (sec < 86400) return `${Math.floor(sec/3600)}h ago`;
+      return `${Math.floor(sec/86400)}d ago`;
+    }
+
+    // Select Project
+    async function selectProject(projectId, switchToIde = false) {
+      currentProject = projectList.find(p => p.id === projectId) || null;
+      if (!currentProject) {
+        const res = await fetch(`/api/projects/${projectId}`);
+        const data = await res.json();
+        currentProject = data.project;
+      }
+      if (!currentProject) return;
+
+      // Update IDE Headers
+      document.getElementById('ideProjectTitle').textContent = currentProject.name;
+      document.getElementById('idePackageName').textContent = currentProject.packageName;
+      document.getElementById('aiActiveProjectLabel').textContent = `Project: ${currentProject.name}`;
+
+      // Load files
+      await loadProjectFiles(currentProject.id);
+
+      // Load AI request history
+      await loadAiHistory(currentProject.id);
+
+      if (switchToIde) {
+        switchScreen('screenIDE');
+      }
+    }
+
+    // Load Files
+    async function loadProjectFiles(projectId) {
+      try {
+        const res = await fetch(`/api/projects/${projectId}/files`);
+        const data = await res.json();
+        currentFiles = data.files || [];
+        renderFileTree();
+
+        // Select first Kotlin file or manifest
+        if (currentFiles.length > 0) {
+          const defaultFile = currentFiles.find(f => f.path.includes('MainActivity.kt')) || currentFiles[0];
+          openFileInEditor(defaultFile);
+        }
+      } catch (err) {
+        console.error('Failed to load project files:', err);
+      }
+    }
+
+    function renderFileTree() {
+      const container = document.getElementById('fileTreeContainer');
+      if (currentFiles.length === 0) {
+        container.innerHTML = '<div style="padding: 16px; color: var(--text-muted); font-size: 12px;">No files in project</div>';
+        return;
+      }
+
+      container.innerHTML = currentFiles.map(f => {
+        let icon = 'description';
+        let cls = '';
+        if (f.path.endsWith('.kt')) { icon = 'code'; cls = 'kt'; }
+        else if (f.path.endsWith('.xml')) { icon = 'data_object'; cls = 'xml'; }
+        else if (f.path.endsWith('.gradle') || f.path.endsWith('.kts')) { icon = 'build'; cls = 'gradle'; }
+        else if (f.path.endsWith('.properties')) { icon = 'tune'; }
+
+        const isSelected = selectedFile && selectedFile.path === f.path;
+        return `
+          <div class="file-item ${isSelected ? 'selected' : ''}" onclick="selectFileByPath('${f.path}')">
+            <span class="material-symbols-outlined file-icon ${cls}">${icon}</span>
+            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${f.path}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function selectFileByPath(path) {
+      const file = currentFiles.find(f => f.path === path);
+      if (file) {
+        openFileInEditor(file);
+        // Switch to Code editor tab
+        const codeTabBtn = document.querySelector('[data-idetab="tabCode"]');
+        if (codeTabBtn) codeTabBtn.click();
+      }
+    }
+
+    function openFileInEditor(file) {
+      selectedFile = file;
+      document.getElementById('editorCurrentFilePath').textContent = file.path;
+      document.getElementById('aiIdeCurrentFileLabel').textContent = file.path.split('/').pop();
+      const textarea = document.getElementById('editorTextArea');
+      textarea.value = file.content;
+      document.getElementById('unsavedIndicator').style.display = 'none';
+      updateLineNumbers(file.content);
+      renderFileTree();
+    }
+
+    function updateLineNumbers(content) {
+      const lines = content.split('\n').length;
+      let numbers = '';
+      for (let i = 1; i <= lines; i++) numbers += i + '<br>';
+      document.getElementById('editorLineNumbers').innerHTML = numbers;
+    }
+
+    // Code Editor Save
+    const editorTextArea = document.getElementById('editorTextArea');
+    editorTextArea.addEventListener('input', () => {
+      document.getElementById('unsavedIndicator').style.display = 'inline';
+      updateLineNumbers(editorTextArea.value);
+    });
+
+    document.getElementById('btnSaveEditor').addEventListener('click', async () => {
+      if (!currentProject || !selectedFile) return;
+      try {
+        const res = await fetch(`/api/projects/${currentProject.id}/files`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            path: selectedFile.path,
+            content: editorTextArea.value
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          selectedFile.content = data.file.content;
+          document.getElementById('unsavedIndicator').style.display = 'none';
+          showToast('File saved successfully');
+        } else {
+          const err = await res.json();
+          alert('Save failed: ' + err.error);
+        }
+      } catch (err) {
+        alert('Save failed: ' + err.message);
+      }
+    });
+
+    // Test Error Injection Button (to demonstrate compiler error and AI repair)
+    document.getElementById('btnInjectError').addEventListener('click', () => {
+      if (!selectedFile) return;
+      editorTextArea.value += '\n\n// SYNTAX_ERROR_TRIGGER\nval invalidCode = SYNTAX_ERROR_TRIGGER {\n';
+      document.getElementById('btnSaveEditor').click();
+      showToast('Syntax error injected. Now tap [Build] to test error handling & AI repair!');
+    });
+
+    // Search Projects
+    document.getElementById('projectSearchInput').addEventListener('input', (e) => {
+      renderProjectsList(e.target.value);
+    });
+
+    // New Project Modal triggers
+    document.getElementById('btnOpenNewProjectModal').addEventListener('click', () => {
+      openModal('modalNewProject');
+    });
+
+    document.getElementById('btnCreateWithAi').addEventListener('click', async () => {
+      const name = document.getElementById('newProjName').value.trim();
+      const packageName = document.getElementById('newProjPackage').value.trim();
+      const description = document.getElementById('newProjDesc').value.trim();
+      const theme = document.getElementById('newProjTheme').value;
+      const firebase = document.getElementById('newProjFirebase').checked;
+
+      if (!name) {
+        alert('Please provide a Project Name.');
+        return;
+      }
+
+      closeModal('modalNewProject');
+      openModal('modalGenerationProgress');
+
+      // Staged generation simulation with honest operations
+      const stages = [
+        { step: 'genStep1', time: 700 },
+        { step: 'genStep2', time: 800 },
+        { step: 'genStep3', time: 900 },
+        { step: 'genStep4', time: 700 },
+        { step: 'genStep5', time: 600 },
+        { step: 'genStep6', time: 500 },
+      ];
+
+      for (let i = 0; i < stages.length; i++) {
+        const s = stages[i];
+        const stepElem = document.getElementById(s.step);
+        const iconElem = stepElem.querySelector('.step-icon');
+        iconElem.className = 'step-icon step-active';
+        await new Promise(r => setTimeout(r, s.time));
+        iconElem.className = 'step-icon step-done';
+        iconElem.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px;">check</span>';
+      }
+
+      try {
+        const res = await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            packageName,
+            description: description || `Android app with Jetpack Compose`,
+            theme,
+            firebaseRequired: firebase
+          })
+        });
+        const data = await res.json();
+        closeModal('modalGenerationProgress');
+        await loadProjects();
+        selectProject(data.project.id, true);
+        showToast(`Project "${name}" generated!`);
+      } catch (err) {
+        closeModal('modalGenerationProgress');
+        alert('Failed to generate project: ' + err.message);
+      }
+    });
+
+    // Rename & Duplicate & Delete
+    async function renameProjectPrompt(id, oldName) {
+      const newName = prompt('Rename project:', oldName);
+      if (newName && newName.trim()) {
+        await fetch(`/api/projects/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: newName.trim() })
+        });
+        await loadProjects();
+      }
+    }
+
+    async function duplicateProjectAction(id) {
+      await fetch(`/api/projects/${id}/duplicate`, { method: 'POST' });
+      await loadProjects();
+      showToast('Project duplicated.');
+    }
+
+    async function deleteProjectAction(id) {
+      if (confirm('Delete this project permanently?')) {
+        await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+        await loadProjects();
+        showToast('Project deleted.');
+      }
+    }
+
+    // ZIP Export
+    document.getElementById('btnExportZip').addEventListener('click', async () => {
+      if (!currentProject) return;
+      showToast('Preparing ZIP archive...');
+      const response = await fetch(`/api/projects/${currentProject.id}/export`, { method: 'POST' });
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${currentProject.name.toLowerCase().replace(/\\s+/g, '_')}_project.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showToast('Project ZIP downloaded!');
+    });
+
+    // Build Execution
+    document.getElementById('btnIdeQuickBuild').addEventListener('click', () => {
+      const buildTabBtn = document.querySelector('[data-idetab="tabBuild"]');
+      if (buildTabBtn) buildTabBtn.click();
+      startRemoteBuild();
+    });
+
+    document.getElementById('btnTriggerBuildAgain').addEventListener('click', () => {
+      startRemoteBuild();
+    });
+
+    async function startRemoteBuild() {
+      if (!currentProject) return;
+      // Reset UI
+      document.getElementById('buildStatusBadge').textContent = 'QUEUED';
+      document.getElementById('buildStatusBadge').className = 'badge badge-status running';
+      document.getElementById('metricBuildStatus').textContent = 'QUEUED';
+      document.getElementById('metricBuildProgress').textContent = '0%';
+      document.getElementById('metricBuildDuration').textContent = '0.0s';
+      document.getElementById('buildProgressBar').style.width = '10%';
+      document.getElementById('buildErrorCard').style.display = 'none';
+      document.getElementById('buildArtifactCard').style.display = 'none';
+      document.getElementById('btnCancelBuild').style.display = 'inline-flex';
+      document.getElementById('buildLogsConsole').textContent = '> Queuing build with isolated cloud worker...\n';
+
+      try {
+        const res = await fetch(`/api/projects/${currentProject.id}/build`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ variant: 'debug' })
+        });
+        const data = await res.json();
+        activeBuildId = data.buildId;
+
+        // Poll build status
+        if (buildPollInterval) clearInterval(buildPollInterval);
+        buildPollInterval = setInterval(pollBuildStatus, 500);
+      } catch (err) {
+        alert('Failed to trigger build: ' + err.message);
+      }
+    }
+
+    async function pollBuildStatus() {
+      if (!activeBuildId) return;
+      try {
+        const res = await fetch(`/api/builds/${activeBuildId}`);
+        if (!res.ok) return;
+        const build = await res.json();
+
+        // Update logs & metrics
+        document.getElementById('buildLogsConsole').textContent = build.logs || '';
+        document.getElementById('buildLogsConsole').scrollTop = document.getElementById('buildLogsConsole').scrollHeight;
+
+        document.getElementById('metricBuildStatus').textContent = build.status;
+        document.getElementById('metricBuildProgress').textContent = `${build.progress}%`;
+        document.getElementById('buildProgressBar').style.width = `${build.progress}%`;
+
+        if (build.durationMs) {
+          document.getElementById('metricBuildDuration').textContent = `${(build.durationMs / 1000).toFixed(1)}s`;
+        } else {
+          document.getElementById('metricBuildDuration').textContent = `${((Date.now() - build.startedAt)/1000).toFixed(1)}s`;
+        }
+
+        if (build.status === 'RUNNING') {
+          document.getElementById('buildStatusBadge').textContent = 'RUNNING';
+          document.getElementById('buildStatusBadge').className = 'badge badge-status running';
+        } else if (build.status === 'SUCCEEDED') {
+          clearInterval(buildPollInterval);
+          document.getElementById('buildStatusBadge').textContent = 'SUCCEEDED';
+          document.getElementById('buildStatusBadge').className = 'badge badge-status succeeded';
+          document.getElementById('btnCancelBuild').style.display = 'none';
+
+          // Show Artifact Card
+          document.getElementById('buildArtifactCard').style.display = 'block';
+          if (build.artifactId) {
+            document.getElementById('btnDownloadApk').href = `/api/artifacts/${build.artifactId}/download`;
+          }
+          loadBuiltApps();
+          showToast('✓ Build succeeded! APK available in Built Apps.');
+        } else if (build.status === 'FAILED') {
+          clearInterval(buildPollInterval);
+          document.getElementById('buildStatusBadge').textContent = 'FAILED';
+          document.getElementById('buildStatusBadge').className = 'badge badge-status failed';
+          document.getElementById('btnCancelBuild').style.display = 'none';
+
+          // Show Error Card
+          document.getElementById('buildErrorCard').style.display = 'block';
+          document.getElementById('buildErrorSummaryText').textContent = build.errorSummary || 'Compilation failure detected.';
+        } else if (build.status === 'CANCELLED') {
+          clearInterval(buildPollInterval);
+          document.getElementById('buildStatusBadge').textContent = 'CANCELLED';
+          document.getElementById('btnCancelBuild').style.display = 'none';
+        }
+      } catch (err) {
+        console.error('Build poll error:', err);
+      }
+    }
+
+    // Cancel Build
+    document.getElementById('btnCancelBuild').addEventListener('click', async () => {
+      if (!activeBuildId) return;
+      await fetch(`/api/builds/${activeBuildId}/cancel`, { method: 'POST' });
+    });
+
+    // Install Handoff
+    document.getElementById('btnHandoffInstall').addEventListener('click', () => {
+      alert('Install Handoff:\\nIn a connected mobile environment, this dispatches an Android Intent to PackageInstaller for direct on-device APK testing.');
+    });
+
+    // AI Coding Agent
+    document.getElementById('btnSendAiPrompt').addEventListener('click', () => {
+      const input = document.getElementById('aiPromptInput');
+      sendAiPrompt(input.value);
+      input.value = '';
+    });
+
+    document.getElementById('aiPromptInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        document.getElementById('btnSendAiPrompt').click();
+      }
+    });
+
+    document.getElementById('btnSendAiIde').addEventListener('click', () => {
+      const input = document.getElementById('aiIdeInput');
+      sendAiPrompt(input.value);
+      input.value = '';
+    });
+
+    function triggerQuickAction(actionPrompt) {
+      sendAiPrompt(actionPrompt);
+    }
+
+    // Fix error with AI CTA
+    document.getElementById('btnFixErrorWithAi').addEventListener('click', () => {
+      const errorText = document.getElementById('buildErrorSummaryText').textContent;
+      sendAiPrompt(`Fix this build error: ${errorText}`);
+    });
+
+    async function sendAiPrompt(promptText) {
+      if (!promptText || !promptText.trim() || !currentProject) return;
+
+      appendChatMessage('user', promptText);
+
+      try {
+        const res = await fetch(`/api/projects/${currentProject.id}/ai`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: promptText,
+            model: document.getElementById('settingsAiModelSelect').value
+          })
+        });
+        const data = await res.json();
+        const req = data.request;
+
+        let aiReplyHtml = `<div>${req.summary || 'Applied requested changes to project.'}</div>`;
+        if (req.actions && req.actions.length > 0) {
+          aiReplyHtml += req.actions.map(a => `
+            <div class="action-badge">
+              <span class="material-symbols-outlined" style="font-size: 14px;">check</span>
+              ${a.type}: ${a.path || a.dependency || 'rebuild triggered'}
+            </div>
+          `).join('');
+        }
+
+        appendChatMessage('ai', aiReplyHtml, true);
+
+        // Refresh files in IDE
+        await loadProjectFiles(currentProject.id);
+
+        // If an auto build was requested (e.g. after repair)
+        if (req.actions.some(a => a.type === 'request_build')) {
+          showToast('Automatic rebuild triggered after repair...');
+          setTimeout(startRemoteBuild, 800);
+        }
+      } catch (err) {
+        appendChatMessage('ai', `<span style="color: var(--accent-red);">Error processing AI prompt: ${err.message}</span>`, true);
+      }
+    }
+
+    function appendChatMessage(role, content, isHtml = false) {
+      const history = document.getElementById('chatHistoryList');
+      const msg = document.createElement('div');
+      msg.className = `chat-msg ${role}`;
+      if (isHtml) msg.innerHTML = content;
+      else msg.textContent = content;
+      history.appendChild(msg);
+      history.scrollTop = history.scrollHeight;
+    }
+
+    async function loadAiHistory(projectId) {
+      try {
+        const res = await fetch(`/api/projects/${projectId}/ai`);
+        const data = await res.json();
+        const list = data.requests || [];
+        const history = document.getElementById('chatHistoryList');
+        history.innerHTML = `
+          <div class="chat-msg ai">
+            👋 <strong>Welcome to Phone AI Android IDE Agent!</strong><br>
+            Project context loaded: <em>${currentProject.name}</em> (${currentProject.packageName}).
+          </div>
+        `;
+        list.reverse().forEach(req => {
+          appendChatMessage('user', req.userMessage);
+          let reply = `<div>${req.summary || 'Applied changes.'}</div>`;
+          if (req.actions && req.actions.length > 0) {
+            reply += req.actions.map(a => `
+              <div class="action-badge">
+                <span class="material-symbols-outlined" style="font-size: 14px;">check</span>
+                ${a.type}: ${a.path || a.dependency || 'action'}
+              </div>
+            `).join('');
+          }
+          appendChatMessage('ai', reply, true);
+        });
+      } catch (err) {
+        console.error('Failed to load AI history:', err);
+      }
+    }
+
+    // Toast notification
+    function showToast(msg) {
+      const existing = document.getElementById('ideToast');
+      if (existing) existing.remove();
+
+      const toast = document.createElement('div');
+      toast.id = 'ideToast';
+      toast.style.cssText = `
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1e2230;
+        border: 1px solid #3b82f6;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 8px 16px;
+        border-radius: 20px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        z-index: 2000;
+        animation: fadeIn 0.2s ease-out;
+      `;
+      toast.textContent = msg;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2600);
+    }
+
+    // ================= Built Apps Management =================
+    let builtAppsList = [];
+
+    async function loadBuiltApps() {
+      try {
+        const res = await fetch('/api/built-apps');
+        if (!res.ok) return;
+        const data = await res.json();
+        builtAppsList = data.builtApps || [];
+        renderBuiltApps();
+      } catch (err) {
+        console.error('Failed to load built apps:', err);
+      }
+    }
+
+    function renderBuiltApps(filter = '') {
+      const container = document.getElementById('builtAppsListContainer');
+      const filterSelect = document.getElementById('builtAppsFilterSelect')?.value || 'ALL';
+      const countBadge = document.getElementById('builtAppsCountBadge');
+      const metricCount = document.getElementById('metricBuiltCount');
+      if (countBadge) countBadge.textContent = builtAppsList.length;
+      if (metricCount) metricCount.textContent = builtAppsList.length;
+
+      const filtered = builtAppsList.filter(app => {
+        const query = (filter || '').toLowerCase();
+        const matchesQuery = !query || 
+          (app.projectName && app.projectName.toLowerCase().includes(query)) || 
+          (app.packageName && app.packageName.toLowerCase().includes(query)) ||
+          (app.fileName && app.fileName.toLowerCase().includes(query));
+
+        const matchesVariant = filterSelect === 'ALL' || 
+          (app.variant && app.variant.toUpperCase() === filterSelect);
+
+        return matchesQuery && matchesVariant;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="m3-card" style="text-align: center; padding: 32px 16px;">
+            <span class="material-symbols-outlined" style="font-size: 40px; color: var(--text-muted);">android</span>
+            <div style="font-size: 15px; font-weight: 700; margin-top: 8px;">No built APKs found</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+              Build your project from the IDE or AI Builder to compile ready-to-run APKs.
+            </div>
+            <button class="btn btn-primary btn-sm" style="margin-top: 12px;" onclick="triggerBuildFromBuiltSection()">
+              <span class="material-symbols-outlined" style="font-size: 15px;">play_arrow</span> Build Current Project
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(app => `
+        <div class="m3-card" style="margin-bottom: 12px;">
+          <div style="display: flex; gap: 12px; align-items: flex-start;">
+            <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #6366f1, #10b981); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <span class="material-symbols-outlined" style="color: #fff; font-size: 26px;">android</span>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-size: 15px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  ${escapeHtml(app.projectName || 'Android App')}
+                </div>
+                <span class="badge" style="background: ${app.variant === 'release' ? 'rgba(99,102,241,0.2)' : 'rgba(16,185,129,0.2)'}; color: ${app.variant === 'release' ? '#818cf8' : '#34d399'}; font-size: 10px; font-weight: 700;">
+                  ${(app.variant || 'debug').toUpperCase()}
+                </span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px;">
+                ${escapeHtml(app.packageName || 'com.example.app')}
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 12px 0;">
+            <span class="badge badge-kotlin" style="font-size: 10px;">v1.0.0</span>
+            <span class="badge" style="background: rgba(255,255,255,0.06); color: #cbd5e1; font-size: 10px;">${((app.size || 14859200) / (1024*1024)).toFixed(1)} MB</span>
+            <span class="badge" style="background: rgba(255,255,255,0.06); color: #cbd5e1; font-size: 10px;">Built ${formatTime(app.completedAt)}</span>
+          </div>
+
+          <div style="display: flex; gap: 8px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px;">
+            <button class="btn btn-primary btn-sm" style="flex: 1; justify-content: center;" onclick="openBuiltAppPreview('${escapeHtml(app.projectName || 'Android App')}', '${escapeHtml(app.packageName || 'com.example.app')}')">
+              <span class="material-symbols-outlined" style="font-size: 16px;">play_arrow</span> Run App
+            </button>
+            <a class="btn btn-outline btn-sm" href="${app.downloadUrl || '#'}" download style="text-decoration: none; justify-content: center;">
+              <span class="material-symbols-outlined" style="font-size: 16px;">download</span> APK
+            </a>
+            <button class="btn btn-outline btn-sm" onclick="switchScreen('screenIDE')" title="Open in IDE">
+              <span class="material-symbols-outlined" style="font-size: 16px;">code</span>
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterBuiltApps() {
+      const query = document.getElementById('builtAppsSearchInput')?.value || '';
+      renderBuiltApps(query);
+    }
+
+    function triggerBuildFromBuiltSection() {
+      switchScreen('screenIDE');
+      const buildTabBtn = document.querySelector('[data-idetab="tabBuild"]');
+      if (buildTabBtn) buildTabBtn.click();
+      startRemoteBuild();
+    }
+
+    function openBuiltAppPreview(name, pkg) {
+      document.getElementById('simulatedAppHeaderTitle').textContent = name;
+      document.getElementById('simulatedAppTitle').textContent = name;
+      document.getElementById('simulatedAppPkg').textContent = pkg;
+      openModal('modalRunBuiltApp');
+    }
+
+    function addSimulatedNote() {
+      const input = document.getElementById('simNewNoteInput');
+      const text = input.value.trim();
+      if (!text) return;
+      const list = document.getElementById('simulatedNotesList');
+      const item = document.createElement('div');
+      item.style.cssText = 'background: #1e293b; padding: 10px 12px; border-radius: 8px; border: 1px solid #334155; animation: fadeIn 0.2s ease;';
+      item.innerHTML = `
+        <div style="font-size: 13px; font-weight: 600; color: #fff;">${escapeHtml(text)}</div>
+        <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Category: User Added</div>
+      `;
+      list.prepend(item);
+      input.value = '';
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Init
+    loadProjects();
+    loadBuiltApps();
+  </script>
+</body>
+</html>
