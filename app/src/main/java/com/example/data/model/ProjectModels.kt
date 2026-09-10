@@ -109,3 +109,14 @@ data class BuiltApp(
     val signatureType: String = "Android Debug Keystore (SHA-256)"
 )
 
+data class AppSettings(
+    val selectedModel: String = "Gemini 2.5 Flash (Recommended)",
+    val useCustomAi: Boolean = false,
+    val customAiEndpoint: String = "",
+    val customAiApiKey: String = "",
+    val customAiModelName: String = "gemini-2.5-flash",
+    val firebaseEnabled: Boolean = true,
+    val cloudBuildSimulation: Boolean = true,
+    val darkBlueTheme: Boolean = true
+)
+

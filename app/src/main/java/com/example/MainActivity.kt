@@ -10,12 +10,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.data.repository.ProjectRepository
+import com.example.data.repository.SettingsRepository
+import com.example.data.storage.ApkStorageManager
 import com.example.ui.PhoneAiIdeApp
 import com.example.ui.theme.MyApplicationTheme
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    ProjectRepository.init(applicationContext)
+    SettingsRepository.init(applicationContext)
+    ApkStorageManager.init(applicationContext)
     enableEdgeToEdge()
     setContent {
       MyApplicationTheme {
@@ -37,3 +43,4 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
 fun GreetingPreview() {
   MyApplicationTheme { Greeting("Android") }
 }
+

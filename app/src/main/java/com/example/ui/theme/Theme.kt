@@ -14,10 +14,11 @@ import androidx.compose.ui.platform.LocalContext
 private val DarkColorScheme =
   darkColorScheme(
     primary = IdePrimary,
-    onPrimary = Color.White,
+    onPrimary = Color(0xFF041026),
     primaryContainer = IdePrimaryVariant,
     onPrimaryContainer = Color.White,
     secondary = IdeSecondary,
+    onSecondary = Color(0xFF041026),
     tertiary = IdeAccentGreen,
     background = IdeBackgroundDark,
     surface = IdeSurface,
@@ -32,9 +33,9 @@ private val LightColorScheme = DarkColorScheme
 
 @Composable
 fun MyApplicationTheme(
-  darkTheme: Boolean = isSystemInDarkTheme(),
-  // Dynamic color is available on Android 12+
-  dynamicColor: Boolean = true,
+  darkTheme: Boolean = true,
+  // Keep dark blue theme enabled consistently across devices
+  dynamicColor: Boolean = false,
   content: @Composable () -> Unit,
 ) {
   val colorScheme =
@@ -50,3 +51,4 @@ fun MyApplicationTheme(
 
   MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
 }
+

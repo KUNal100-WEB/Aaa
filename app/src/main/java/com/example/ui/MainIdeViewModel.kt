@@ -2,10 +2,15 @@ package com.example.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.net.Uri
+import android.content.Context
+import android.content.Intent
 import com.example.data.model.*
 import com.example.data.repository.ProjectRepository
 import com.example.data.service.IBuildService
 import com.example.data.service.MockBuildService
+import com.example.data.storage.ApkStorageManager
+import com.example.data.storage.StorageResult
 import com.example.domain.ai.AICodingAgent
 import com.example.ui.navigation.IdeScreenTab
 import com.example.ui.navigation.IdeSubTab
@@ -32,14 +37,21 @@ data class IdeUiState(
     val runningPreviewApp: BuiltApp? = null,
     val isGeneratingNewProject: Boolean = false,
     val generationStageIndex: Int = 0,
+    val settings: AppSettings = AppSettings(),
+    val aiConnectionTestStatus: String? = null,
+    val isTestingAiConnection: Boolean = false,
     val errorMessage: String? = null,
-    val userNotification: String? = null
+    val userNotification: String? = null,
+    val lastDownloadedApkUri: Uri? = null,
+    val lastDownloadedApkPath: String? = null,
+    val isDownloadingApk: Boolean = false
 )
 
 class MainIdeViewModel(
-    private val repository: ProjectRepository = ProjectRepository(),
+    private val repository: ProjectRepository = ProjectRepository.instance,
+    private val settingsRepository: com.example.data.repository.SettingsRepository = com.example.data.repository.SettingsRepository.instance,
     private val buildService: IBuildService = MockBuildService(),
-    private val aiAgent: AICodingAgent = AICodingAgent(repository)
+    private val aiAgent: AICodingAgent = AICodingAgent(repository, settingsRepository)
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(IdeUiState())
@@ -58,6 +70,11 @@ class MainIdeViewModel(
         viewModelScope.launch {
             repository.builtApps.collect { list ->
                 _uiState.update { it.copy(builtApps = list) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.settings.collect { s ->
+                _uiState.update { it.copy(settings = s) }
             }
         }
     }
@@ -251,8 +268,64 @@ class MainIdeViewModel(
     }
 
     fun downloadBuiltApk(app: BuiltApp) {
-        _uiState.update {
-            it.copy(userNotification = "✓ Downloaded ${app.fileName} (${app.fileSizeFormatted}) to device storage.")
+        viewModelScope.launch {
+            _uiState.update { it.copy(isDownloadingApk = true) }
+            val files = repository.getFiles(app.projectId)
+            when (val result = ApkStorageManager.instance.saveApkToLocalStorage(app, files)) {
+                is StorageResult.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            isDownloadingApk = false,
+                            lastDownloadedApkUri = result.uri,
+                            lastDownloadedApkPath = result.filePath,
+                            userNotification = "✓ Saved to ${result.destinationFolder}: ${result.fileName} (${result.fileSizeFormatted})"
+                        )
+                    }
+                }
+                is StorageResult.Error -> {
+                    _uiState.update {
+                        it.copy(
+                            isDownloadingApk = false,
+                            errorMessage = result.message
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun exportProjectZip(project: Project) {
+        viewModelScope.launch {
+            val files = repository.getFiles(project.id)
+            when (val result = ApkStorageManager.instance.exportProjectZip(project, files)) {
+                is StorageResult.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            lastDownloadedApkUri = result.uri,
+                            lastDownloadedApkPath = result.filePath,
+                            userNotification = "✓ Exported ZIP to ${result.destinationFolder}: ${result.fileName} (${result.fileSizeFormatted})"
+                        )
+                    }
+                }
+                is StorageResult.Error -> {
+                    _uiState.update { it.copy(errorMessage = result.message) }
+                }
+            }
+        }
+    }
+
+    fun openDownloadedApk(context: Context) {
+        val uri = _uiState.value.lastDownloadedApkUri ?: return
+        try {
+            val intent = ApkStorageManager.instance.createInstallIntent(uri)
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            try {
+                val shareIntent = ApkStorageManager.instance.createShareIntent(uri)
+                context.startActivity(Intent.createChooser(shareIntent, "Open or Share APK"))
+            } catch (ex: Exception) {
+                _uiState.update { it.copy(errorMessage = "Could not open file: ${ex.localizedMessage}") }
+            }
         }
     }
 
@@ -295,7 +368,31 @@ class MainIdeViewModel(
         }
     }
 
+    fun updateSettings(newSettings: AppSettings) {
+        settingsRepository.saveSettings(newSettings)
+        _uiState.update { it.copy(userNotification = "Settings saved successfully.") }
+    }
+
+    fun testCustomAiConnection(endpoint: String, apiKey: String, model: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isTestingAiConnection = true, aiConnectionTestStatus = "Testing endpoint connection...") }
+            val result = settingsRepository.testCustomAiConnection(endpoint, apiKey, model)
+            _uiState.update {
+                it.copy(
+                    isTestingAiConnection = false,
+                    aiConnectionTestStatus = (if (result.first) "✅ " else "❌ ") + result.second,
+                    userNotification = if (result.first) "AI link verified successfully!" else "Custom AI connection failed."
+                )
+            }
+        }
+    }
+
+    fun clearAiConnectionTestStatus() {
+        _uiState.update { it.copy(aiConnectionTestStatus = null) }
+    }
+
     fun clearNotification() {
         _uiState.update { it.copy(userNotification = null, errorMessage = null) }
     }
 }
+

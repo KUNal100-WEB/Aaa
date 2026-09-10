@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +40,7 @@ fun BuiltAppsScreen(
     viewModel: MainIdeViewModel,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     var selectedAppForDetails by remember { mutableStateOf<BuiltApp?>(null) }
 
@@ -114,6 +116,53 @@ fun BuiltAppsScreen(
             )
 
             Spacer(modifier = Modifier.height(12.dp))
+
+            if (uiState.lastDownloadedApkUri != null && uiState.userNotification != null && uiState.userNotification.contains("Saved to")) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF10B981).copy(alpha = 0.15f)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF10B981))
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = Color(0xFF10B981),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "APK Saved to Phone Local Storage",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF10B981)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = uiState.userNotification ?: "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = { viewModel.openDownloadedApk(context) },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
+                            ) {
+                                Icon(Icons.Default.Android, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Install / Open APK", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
 
             // Metric Summary Cards
             Row(
@@ -281,6 +330,10 @@ fun BuiltAppsScreen(
             },
             onDownload = {
                 viewModel.downloadBuiltApk(app)
+            },
+            onExportZip = {
+                val proj = uiState.projects.find { it.id == app.projectId } ?: uiState.activeProject
+                if (proj != null) viewModel.exportProjectZip(proj)
             }
         )
     }
@@ -649,17 +702,12 @@ fun RunningAppSimulatorDialog(
 
 @Composable
 fun SimulatedAppInteractiveContent(app: BuiltApp) {
-    var notesList by remember {
-        mutableStateOf(
-            listOf(
-                "Welcome to ${app.projectName}!" to "Personal",
-                "Built using AI & Jetpack Compose on mobile" to "Tech",
-                "Ready to export to APK and Play Store" to "Release"
-            )
-        )
-    }
-    var newNoteText by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf("All") }
+    val name = app.projectName.lowercase()
+    val isEcommerce = name.contains("shop") || name.contains("store") || name.contains("ecommerce") || name.contains("e-commerce") || name.contains("cart")
+    val isFitness = name.contains("fit") || name.contains("workout") || name.contains("gym") || name.contains("step") || name.contains("run")
+    val isMusic = name.contains("music") || name.contains("song") || name.contains("audio") || name.contains("player")
+    val isChat = name.contains("chat") || name.contains("message") || name.contains("messenger")
+    val isFinance = name.contains("finance") || name.contains("expense") || name.contains("budget") || name.contains("money")
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -668,7 +716,14 @@ fun SimulatedAppInteractiveContent(app: BuiltApp) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Dashboard",
+                text = when {
+                    isEcommerce -> "Shop Catalog"
+                    isFitness -> "Fitness Tracker"
+                    isMusic -> "Audio Player"
+                    isChat -> "AI Messenger"
+                    isFinance -> "Budget Wallet"
+                    else -> "Task Dashboard"
+                },
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
@@ -689,75 +744,278 @@ fun SimulatedAppInteractiveContent(app: BuiltApp) {
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Quick Input
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            OutlinedTextField(
-                value = newNoteText,
-                onValueChange = { newNoteText = it },
-                placeholder = { Text("Add new item...", fontSize = 12.sp, color = Color.Gray) },
-                singleLine = true,
-                shape = RoundedCornerShape(8.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedBorderColor = Color(0xFF6366F1),
-                    unfocusedBorderColor = Color(0xFF334155)
-                ),
-                modifier = Modifier.weight(1f)
-            )
-            Button(
-                onClick = {
-                    if (newNoteText.isNotBlank()) {
-                        notesList = listOf(newNoteText to "General") + notesList
-                        newNoteText = ""
+        when {
+            isEcommerce -> {
+                var cartCount by remember { mutableStateOf(1) }
+                var orderPlaced by remember { mutableStateOf(false) }
+                val products = listOf(
+                    "Aura Wireless ANC Headphones" to 149.99,
+                    "Pulse Smartwatch Pro" to 199.50,
+                    "Ergonomic Mechanical Keyboard" to 89.00,
+                    "MagSafe Fast Charging Pad" to 39.99
+                )
+
+                if (orderPlaced) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF064E3B))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("🎉 Order Placed Successfully!", fontWeight = FontWeight.Bold, color = Color(0xFF34D399))
+                            Text("Your items are being prepared for shipping.", fontSize = 12.sp, color = Color.White)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(onClick = { orderPlaced = false }) { Text("Shop More") }
+                        }
                     }
-                },
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1))
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Cart Items: $cartCount", color = Color.White, fontWeight = FontWeight.SemiBold)
+                    Button(
+                        onClick = { orderPlaced = true; cartCount = 0 },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
+                    ) {
+                        Text("Checkout ($cartCount)")
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+                    items(products) { (title, price) ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B))
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(title, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                                    Text("$$price", color = Color(0xFF38BDF8), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
+                                Button(
+                                    onClick = { cartCount++ },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1))
+                                ) {
+                                    Text("+ Add", fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
+                }
             }
-        }
+            isFitness -> {
+                var steps by remember { mutableStateOf(7420) }
+                val workouts = remember {
+                    mutableStateListOf(
+                        "Morning Sunrise Run (30 mins)" to true,
+                        "Core HIIT Blast (20 mins)" to true,
+                        "Strength & Hypertrophy (45 mins)" to false,
+                        "Evening Walk (25 mins)" to false
+                    )
+                }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(notesList) { (title, category) ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF334155))
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B))
                 ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("Daily Step Counter", color = Color.Gray, fontSize = 11.sp)
+                                Text("$steps / 10,000", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
+                            }
+                            Button(
+                                onClick = { steps += 500 },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
+                            ) {
+                                Text("+500 Steps")
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            progress = { (steps / 10000f).coerceIn(0f, 1f) },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = Color(0xFF10B981)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Daily Activities", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+                    items(workouts.indices.toList()) { index ->
+                        val (title, done) = workouts[index]
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B))
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(title, color = Color.White, fontSize = 13.sp)
+                                Checkbox(
+                                    checked = done,
+                                    onCheckedChange = { workouts[index] = title to it }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            isMusic -> {
+                var isPlaying by remember { mutableStateOf(true) }
+                var trackName by remember { mutableStateOf("Midnight LoFi Grooves") }
+                val playlist = listOf("Midnight LoFi Grooves", "Electric Aurora Wave", "Sunset in Tokyo", "Starlight Ambient")
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF38BDF8))
+                                .size(64.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFF6366F1)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.MusicNote, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(trackName, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
+                        Text("Synthwave Chill Records", color = Color.Gray, fontSize = 11.sp)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        FilledIconButton(
+                            onClick = { isPlaying = !isPlaying },
+                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = Color(0xFF6366F1))
+                        ) {
+                            Icon(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, contentDescription = null, tint = Color.White)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Playlist Queue", color = Color.White, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
+                    items(playlist) { song ->
+                        Card(
+                            onClick = { trackName = song },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (song == trackName) Color(0xFF334155) else Color(0xFF1E293B)
+                            )
+                        ) {
+                            Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(song, color = Color.White, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+            else -> {
+                // Notes / Tasks
+                var notesList by remember {
+                    mutableStateOf(
+                        listOf(
+                            "Welcome to ${app.projectName}!" to "Personal",
+                            "Built using Google AI Studio on mobile" to "Tech",
+                            "Saved directly to phone Downloads" to "Storage",
+                            "Ready to export APK and share" to "Release"
                         )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = title,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = Color.White
-                            )
-                            Text(
-                                text = "Category: $category",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFF94A3B8)
-                            )
+                    )
+                }
+                var newNoteText by remember { mutableStateOf("") }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    OutlinedTextField(
+                        value = newNoteText,
+                        onValueChange = { newNoteText = it },
+                        placeholder = { Text("Add new item...", fontSize = 12.sp, color = Color.Gray) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = Color(0xFF6366F1),
+                            unfocusedBorderColor = Color(0xFF334155)
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Button(
+                        onClick = {
+                            if (newNoteText.isNotBlank()) {
+                                notesList = listOf(newNoteText to "General") + notesList
+                                newNoteText = ""
+                            }
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1))
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(16.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(notesList) { (title, category) ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF334155))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF38BDF8))
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = title,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = "Category: $category",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color(0xFF94A3B8)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -771,7 +1029,8 @@ fun AppDetailsDialog(
     app: BuiltApp,
     onDismiss: () -> Unit,
     onRun: () -> Unit,
-    onDownload: () -> Unit
+    onDownload: () -> Unit,
+    onExportZip: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -814,6 +1073,15 @@ fun AppDetailsDialog(
                     text = "Target SDK: ${app.targetSdk} | Min SDK: ${app.minSdk}",
                     style = MaterialTheme.typography.bodySmall
                 )
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedButton(
+                    onClick = onExportZip,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Inventory2, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Export Source Code ZIP", fontSize = 12.sp)
+                }
             }
         },
         confirmButton = {

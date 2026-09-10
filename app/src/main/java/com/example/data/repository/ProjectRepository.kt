@@ -1,5 +1,6 @@
 package com.example.data.repository
 
+import android.content.Context
 import com.example.data.model.BuiltApp
 import com.example.data.model.Project
 import com.example.data.model.ProjectFile
@@ -7,6 +8,9 @@ import com.example.domain.validation.PathValidator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
 import java.util.UUID
 
 class ProjectRepository {
@@ -18,8 +22,22 @@ class ProjectRepository {
 
     private val filesMap = mutableMapOf<String, MutableMap<String, ProjectFile>>() // projectId -> path -> file
 
+    companion object {
+        private var appContext: Context? = null
+
+        fun init(context: Context) {
+            appContext = context.applicationContext
+            instance.loadFromDisk()
+        }
+
+        val instance: ProjectRepository by lazy { ProjectRepository() }
+    }
+
     init {
-        seedInitialProject()
+        if (!loadFromDisk()) {
+            seedInitialProject()
+            saveToDisk()
+        }
     }
 
     private fun seedInitialProject() {
@@ -197,10 +215,12 @@ include(":app")""".trimIndent()
 
     fun addBuiltApp(builtApp: BuiltApp) {
         _builtApps.value = listOf(builtApp) + _builtApps.value.filter { it.id != builtApp.id }
+        saveToDisk()
     }
 
     fun deleteBuiltApp(id: String) {
         _builtApps.value = _builtApps.value.filter { it.id != id }
+        saveToDisk()
     }
 
     fun getProject(id: String): Project? = _projects.value.find { it.id == id }
@@ -232,11 +252,16 @@ include(":app")""".trimIndent()
         _projects.value = _projects.value.map {
             if (it.id == projectId) it.copy(updatedAt = System.currentTimeMillis()) else it
         }
+        saveToDisk()
         return Result.success(updated)
     }
 
     fun deleteFile(projectId: String, path: String): Boolean {
-        return filesMap[projectId]?.remove(path) != null
+        val removed = filesMap[projectId]?.remove(path) != null
+        if (removed) {
+            saveToDisk()
+        }
+        return removed
     }
 
     fun createProject(
@@ -353,6 +378,7 @@ dependencies {
         filesMap[proj.id] = fileMap
 
         _projects.value = listOf(proj) + _projects.value
+        saveToDisk()
         return proj
     }
 
@@ -360,6 +386,7 @@ dependencies {
         _projects.value = _projects.value.map {
             if (it.id == id) it.copy(name = newName, updatedAt = System.currentTimeMillis()) else it
         }
+        saveToDisk()
     }
 
     fun duplicateProject(id: String): Project? {
@@ -379,6 +406,7 @@ dependencies {
                 dupMap[path] = f.copy(id = UUID.randomUUID().toString(), projectId = dup.id)
             }
             filesMap[dup.id] = dupMap
+            saveToDisk()
         }
         return dup
     }
@@ -386,5 +414,186 @@ dependencies {
     fun deleteProject(id: String) {
         filesMap.remove(id)
         _projects.value = _projects.value.filter { it.id != id }
+        saveToDisk()
+    }
+
+    @Synchronized
+    fun saveToDisk() {
+        val ctx = appContext ?: return
+        try {
+            // Save projects
+            val projectsFile = File(ctx.filesDir, "ide_projects.json")
+            val projectsArray = JSONArray()
+            for (p in _projects.value) {
+                val obj = JSONObject().apply {
+                    put("id", p.id)
+                    put("userId", p.userId)
+                    put("name", p.name)
+                    put("packageName", p.packageName)
+                    put("description", p.description)
+                    put("language", p.language)
+                    put("framework", p.framework)
+                    put("createdAt", p.createdAt)
+                    put("updatedAt", p.updatedAt)
+                    put("theme", p.theme)
+                    put("appType", p.appType)
+                    put("firebaseRequired", p.firebaseRequired)
+                }
+                projectsArray.put(obj)
+            }
+            projectsFile.writeText(projectsArray.toString())
+
+            // Save files
+            val filesFile = File(ctx.filesDir, "ide_files.json")
+            val filesObj = JSONObject()
+            for ((projId, map) in filesMap) {
+                val fileArr = JSONArray()
+                for (f in map.values) {
+                    val fObj = JSONObject().apply {
+                        put("id", f.id)
+                        put("projectId", f.projectId)
+                        put("path", f.path)
+                        put("content", f.content)
+                        put("updatedAt", f.updatedAt)
+                    }
+                    fileArr.put(fObj)
+                }
+                filesObj.put(projId, fileArr)
+            }
+            filesFile.writeText(filesObj.toString())
+
+            // Save built apps
+            val builtAppsFile = File(ctx.filesDir, "ide_built_apps.json")
+            val builtAppsArray = JSONArray()
+            for (b in _builtApps.value) {
+                val bObj = JSONObject().apply {
+                    put("id", b.id)
+                    put("projectId", b.projectId)
+                    put("projectName", b.projectName)
+                    put("packageName", b.packageName)
+                    put("versionName", b.versionName)
+                    put("versionCode", b.versionCode)
+                    put("variant", b.variant)
+                    put("fileName", b.fileName)
+                    put("fileSizeFormatted", b.fileSizeFormatted)
+                    put("buildDurationSeconds", b.buildDurationSeconds)
+                    put("completedAt", b.completedAt)
+                    put("appTheme", b.appTheme)
+                    val perms = JSONArray()
+                    b.permissions.forEach { perms.put(it) }
+                    put("permissions", perms)
+                    put("targetSdk", b.targetSdk)
+                    put("minSdk", b.minSdk)
+                    put("signatureType", b.signatureType)
+                }
+                builtAppsArray.put(bObj)
+            }
+            builtAppsFile.writeText(builtAppsArray.toString())
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    @Synchronized
+    fun loadFromDisk(): Boolean {
+        val ctx = appContext ?: return false
+        try {
+            val projectsFile = File(ctx.filesDir, "ide_projects.json")
+            val filesFile = File(ctx.filesDir, "ide_files.json")
+            if (!projectsFile.exists() || !filesFile.exists()) return false
+
+            val projJsonStr = projectsFile.readText()
+            val projArray = JSONArray(projJsonStr)
+            if (projArray.length() == 0) return false
+
+            val loadedProjects = mutableListOf<Project>()
+            for (i in 0 until projArray.length()) {
+                val obj = projArray.getJSONObject(i)
+                loadedProjects.add(
+                    Project(
+                        id = obj.getString("id"),
+                        userId = obj.optString("userId", "user_dev_01"),
+                        name = obj.getString("name"),
+                        packageName = obj.getString("packageName"),
+                        description = obj.optString("description", ""),
+                        language = obj.optString("language", "Kotlin"),
+                        framework = obj.optString("framework", "Jetpack Compose"),
+                        createdAt = obj.optLong("createdAt", System.currentTimeMillis()),
+                        updatedAt = obj.optLong("updatedAt", System.currentTimeMillis()),
+                        theme = obj.optString("theme", "Material 3 Dark"),
+                        appType = obj.optString("appType", "Mobile"),
+                        firebaseRequired = obj.optBoolean("firebaseRequired", false)
+                    )
+                )
+            }
+
+            val filesJsonStr = filesFile.readText()
+            val filesObj = JSONObject(filesJsonStr)
+            filesMap.clear()
+            val keys = filesObj.keys()
+            while (keys.hasNext()) {
+                val k = keys.next()
+                val arr = filesObj.getJSONArray(k)
+                val map = mutableMapOf<String, ProjectFile>()
+                for (j in 0 until arr.length()) {
+                    val fObj = arr.getJSONObject(j)
+                    val pf = ProjectFile(
+                        id = fObj.getString("id"),
+                        projectId = fObj.getString("projectId"),
+                        path = fObj.getString("path"),
+                        content = fObj.getString("content"),
+                        updatedAt = fObj.optLong("updatedAt", System.currentTimeMillis())
+                    )
+                    map[pf.path] = pf
+                }
+                filesMap[k] = map
+            }
+
+            val builtAppsFile = File(ctx.filesDir, "ide_built_apps.json")
+            val loadedBuiltApps = mutableListOf<BuiltApp>()
+            if (builtAppsFile.exists()) {
+                val builtArray = JSONArray(builtAppsFile.readText())
+                for (i in 0 until builtArray.length()) {
+                    val bObj = builtArray.getJSONObject(i)
+                    val permsList = mutableListOf<String>()
+                    val permsArray = bObj.optJSONArray("permissions")
+                    if (permsArray != null) {
+                        for (p in 0 until permsArray.length()) {
+                            permsList.add(permsArray.getString(p))
+                        }
+                    }
+                    loadedBuiltApps.add(
+                        BuiltApp(
+                            id = bObj.getString("id"),
+                            projectId = bObj.getString("projectId"),
+                            projectName = bObj.getString("projectName"),
+                            packageName = bObj.getString("packageName"),
+                            versionName = bObj.optString("versionName", "1.0.0"),
+                            versionCode = bObj.optInt("versionCode", 1),
+                            variant = bObj.optString("variant", "debug"),
+                            fileName = bObj.optString("fileName", "app-debug.apk"),
+                            fileSizeFormatted = bObj.optString("fileSizeFormatted", "14.2 MB"),
+                            buildDurationSeconds = bObj.optInt("buildDurationSeconds", 24),
+                            completedAt = bObj.optLong("completedAt", System.currentTimeMillis()),
+                            appTheme = bObj.optString("appTheme", "Material 3 Dark"),
+                            permissions = if (permsList.isNotEmpty()) permsList else listOf("INTERNET", "ACCESS_NETWORK_STATE"),
+                            targetSdk = bObj.optInt("targetSdk", 35),
+                            minSdk = bObj.optInt("minSdk", 24),
+                            signatureType = bObj.optString("signatureType", "Android Debug Keystore (SHA-256)")
+                        )
+                    )
+                }
+            }
+
+            _projects.value = loadedProjects
+            if (loadedBuiltApps.isNotEmpty()) {
+                _builtApps.value = loadedBuiltApps
+            }
+            return true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return false
+        }
     }
 }
+
